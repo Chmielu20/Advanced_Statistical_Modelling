@@ -1,0 +1,132 @@
+---
+title: "Session 3: Identification of Seasonal Models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ATUR
+
+```{r}
+serie=ts(read.table("Atur.dat", header=F)/1000,start=1996,freq=12)
+```
+
+
+```{r}
+plot(serie,main="Atur")
+abline(v=1990:2020,col=4,lty=3)
+```
+```{r}
+par(mfrow=c(1,2))
+plot(serie)
+abline(v=1990:2020,col=4,lty=3)
+plot(log(serie))
+abline(v=1990:2020,col=4,lty=3)
+```
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+
+```{r}
+boxplot(log(serie)~floor(time(serie)))
+```
+
+```{r}
+m<-apply(matrix(serie,nrow=12),2,mean)
+v<-apply(matrix(serie,nrow=12),2,var)
+plot(v~m,ylim=c(0,40000))
+```
+
+```{r}
+lnserie <- log(serie)
+```
+
+
+```{r}
+monthplot(lnserie)
+```
+
+```{r}
+ts.plot(matrix(serie,nrow=12),col=1:8)
+```
+
+
+```{r}
+d12lnserie <- diff(lnserie,12)
+plot(d12lnserie)
+abline(h=0)
+```
+
+
+```{r}
+monthplot(d12lnserie)
+```
+
+```{r}
+d1d12lnserie <- diff(d12lnserie)
+plot(d1d12lnserie)
+abline(h=0)
+```
+
+
+```{r}
+d1d1d12lnserie <- diff(d1d12lnserie)
+plot(d1d1d12lnserie)
+abline(h=0)
+```
+
+
+```{r}
+var(lnserie)
+var(d12lnserie)
+var(d1d12lnserie)
+var(d1d1d12lnserie)
+```
+
+```{r}
+par(mfrow=c(1,2))
+acf(d1d12lnserie, ylim=c(-1,1), lag.max = 72,col=c(2,rep(1,11)),lwd=2)
+pacf(d1d12lnserie, ylim=c(-1,1), lag.max = 72,col=c(rep(1,11),2),lwd=2)
+par(mfrow=c(1,1))
+```
+
+```{r}
+(mod1 <- arima(serie, order=c(0,1,8),
+              seasonal=list(order=c(0,1,2),period = 12)))
+(mod1 <- arima(serie, order=c(0,1,8),
+              seasonal=list(order=c(0,1,1),period = 12)))
+(mod1 <- arima(serie, order=c(0,1,8),
+              seasonal=list(order=c(0,1,1),period = 12),fixed=c(NA,NA,NA,NA,NA,NA,0,NA,NA)))
+(mod1 <- arima(serie, order=c(0,1,6),
+              seasonal=list(order=c(0,1,1),period = 12)))
+```
+
+```{r}
+par(mfrow=c(1,2))
+acf(resid(mod1), ylim=c(-1,1), lag.max = 72,col=c(2,rep(1,11)),lwd=2)
+pacf(resid(mod1), ylim=c(-1,1), lag.max = 72,col=c(rep(1,11),2),lwd=2)
+par(mfrow=c(1,1))
+```
+```{r}
+tsdiag(mod1,gof=72)
+```
+
+```{r}
+(mod2 <- arima(serie, order=c(1,1,1),
+              seasonal=list(order=c(0,1,2),period = 12)))
+(mod2 <- arima(serie, order=c(1,1,1),
+              seasonal=list(order=c(0,1,1),period = 12)))
+```
+
+```{r}
+par(mfrow=c(1,2))
+acf(resid(mod2), ylim=c(-1,1), lag.max = 72,col=c(2,rep(1,11)),lwd=2)
+pacf(resid(mod2), ylim=c(-1,1), lag.max = 72,col=c(rep(1,11),2),lwd=2)
+par(mfrow=c(1,1))
+```
+```{r}
+tsdiag(mod2,gof=72)
+```

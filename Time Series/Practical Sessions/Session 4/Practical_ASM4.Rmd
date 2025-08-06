@@ -1,0 +1,310 @@
+## Atur
+
+```{r}
+serie=window(ts(read.csv2("atur.dat",header=FALSE)/1000,start=1996,freq=12),start=1996)
+print(round(serie,0))
+```
+
+```{r}
+plot(serie,main="Unemployment in Spain")
+abline(v=1990:2020,col=4,lty=3)
+text(1996:2019+0.5,5000,1996:2019,cex=0.8)
+```
+
+```{r}
+lnserie=log(serie)
+plot(lnserie)
+```
+
+```{r}
+d12lnserie=diff(lnserie,12)
+plot(d12lnserie)
+abline(h=0)
+```
+
+```{r}
+d1d12lnserie=diff(d12lnserie,1)
+plot(d1d12lnserie)
+abline(h=0)
+```
+
+
+```{r}
+#################Validation#################################
+validation=function(model){
+  s=frequency(get(model$series))
+  resid=model$residuals
+  par(mfrow=c(2,2),mar=c(3,3,3,3))
+  #Residuals plot
+  plot(resid,main="Residuals")
+  abline(h=0)
+  abline(h=c(-3*sd(resid),3*sd(resid)),lty=3,col=4)
+  #Square Root of absolute values of residuals (Homocedasticity)
+  scatter.smooth(sqrt(abs(resid)),main="Square Root of Absolute residuals",
+                 lpars=list(col=2))
+  
+  #Normal plot of residuals
+  qqnorm(resid)
+  qqline(resid,col=2,lwd=2)
+  
+  ##Histogram of residuals with normal curve
+  hist(resid,breaks=20,freq=FALSE)
+  curve(dnorm(x,mean=mean(resid),sd=sd(resid)),col=2,add=T)
+  
+  
+  #ACF & PACF of residuals
+  par(mfrow=c(1,2))
+  acf(resid,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,s-1)),lwd=1)
+  pacf(resid,ylim=c(-1,1),lag.max=60,col=c(rep(1,s-1),2),lwd=1)
+  par(mfrow=c(1,1))
+  
+  #Ljung-Box p-values
+  par(mar=c(2,2,1,1))
+  tsdiag(model,gof.lag=7*s)
+  cat("\n--------------------------------------------------------------------\n")
+  print(model)
+  
+  #Stationary and Invertible
+  cat("\nModul of AR Characteristic polynomial Roots: ", 
+      Mod(polyroot(c(1,-model$model$phi))),"\n")
+  cat("\nModul of MA Characteristic polynomial Roots: ",
+      Mod(polyroot(c(1,model$model$theta))),"\n")
+  
+  suppressMessages(require(forecast,quietly=TRUE,warn.conflicts=FALSE))
+  plot(model)
+  
+  #Model expressed as an MA infinity (psi-weights)
+  psis=ARMAtoMA(ar=model$model$phi,ma=model$model$theta,lag.max=36)
+  names(psis)=paste("psi",1:36)
+  cat("\nPsi-weights (MA(inf))\n")
+  cat("\n--------------------\n")
+  print(psis[1:24])
+  
+  #Model expressed as an AR infinity (pi-weights)
+  pis=-ARMAtoMA(ar=-model$model$theta,ma=-model$model$phi,lag.max=36)
+  names(pis)=paste("pi",1:36)
+  cat("\nPi-weights (AR(inf))\n")
+  cat("\n--------------------\n")
+  print(pis[1:24])
+   
+  cat("\nDescriptive Statistics for the Residuals\n")
+  cat("\n----------------------------------------\n") 
+  
+  suppressMessages(require(fBasics,quietly=TRUE,warn.conflicts=FALSE))
+  ##Anderson-Darling test
+  print(basicStats(resid))
+  
+  ## Add here complementary tests (use with caution!)
+  ##---------------------------------------------------------
+  cat("\nNormality Tests\n")
+  cat("\n--------------------\n")
+ 
+  ##Shapiro-Wilks Normality test
+  print(shapiro.test(resid))
+
+  suppressMessages(require(nortest,quietly=TRUE,warn.conflicts=FALSE))
+  ##Anderson-Darling test
+  print(ad.test(resid))
+  
+  suppressMessages(require(tseries,quietly=TRUE,warn.conflicts=FALSE))
+  ##Jarque-Bera test
+  print(jarque.bera.test(resid))
+  
+  cat("\nHomoscedasticity Test\n")
+  cat("\n--------------------\n")
+  suppressMessages(require(lmtest,quietly=TRUE,warn.conflicts=FALSE))
+  ##Breusch-Pagan test
+  obs=get(model$series)
+  print(bptest(resid~I(obs-resid)))
+  
+  cat("\nIndependence Tests\n")
+  cat("\n--------------------\n")
+  
+  ##Durbin-Watson test
+  print(dwtest(resid~I(1:length(resid))))
+  
+  ##Ljung-Box test
+  cat("\nLjung-Box test\n")
+  print(t(apply(matrix(c(1:4,(1:4)*s)),1,function(el) {
+    te=Box.test(resid,type="Ljung-Box",lag=el)
+    c(lag=(te$parameter),statistic=te$statistic[[1]],p.value=te$p.value)})))
+  
+}
+################# Fi Validation #################################
+```
+
+```{r}
+par(mfrow=c(1,2))
+acf(d1d12lnserie,ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
+pacf(d1d12lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+(mod1=arima(lnserie,order=c(1,1,1),seasonal=list(order=c(0,1,1),period=12)))
+```
+
+
+```{r}
+validation(mod1)
+```
+
+```{r}
+(mod2=arima(lnserie,order=c(8,1,0),seasonal=list(order=c(0,1,1),period=12)))
+
+```
+
+```{r}
+validation(mod2)
+```
+
+
+```{r}
+ultim=c(2018,12)
+pdq=c(1,1,1)
+PDQ=c(0,1,1)
+
+serie2=window(serie,end=ultim)
+lnserie2=log(serie2)
+serie1=window(serie,end=ultim+c(1,0))
+lnserie1=log(serie1)
+
+(modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12)))
+(modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12)))
+```
+
+
+```{r}
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+
+ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=ultim[1]+c(-2,+2),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+2),lty=3,col=4)
+```
+
+```{r}
+obs=window(serie,start=ultim+c(0,1))
+pr=window(pr,start=ultim+c(0,1))
+ts(data.frame(LowLim=tl[-1],Predic=pr,UpperLim=tu[-1],Observ=obs,Error=obs-pr,PercentError=(obs-pr)/obs),start=ultim+c(0,1),freq=12)
+mod.RMSE1=sqrt(sum((obs-pr)^2)/12)
+mod.MAE1=sum(abs(obs-pr))/12
+mod.RMSPE1=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE1=sum(abs(obs-pr)/obs)/12
+
+data.frame("RMSE"=mod.RMSE1,"MAE"=mod.MAE1,"RMSPE"=mod.RMSPE1,"MAPE"=mod.MAPE1)
+
+mCI1=mean(tu-tl)
+
+cat("\nMean Length CI: ",mCI1)
+```
+
+```{r}
+pred=predict(modA,n.ahead=12)
+pr<-ts(c(tail(lnserie1,1),pred$pred),start=ultim+c(1,0),freq=12)
+se<-ts(c(0,pred$se),start=ultim+c(1,0),freq=12)
+
+tl1<-ts(exp(pr-1.96*se),start=ultim+c(1,0),freq=12)
+tu1<-ts(exp(pr+1.96*se),start=ultim+c(1,0),freq=12)
+pr1<-ts(exp(pr),start=ultim+c(1,0),freq=12)
+
+ts.plot(serie,tl1,tu1,pr1,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(ultim[1]-2,ultim[1]+3),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+3),lty=3,col=4)
+```
+
+```{r}
+(previs1=window(cbind(tl1,pr1,tu1),start=ultim+c(1,0)))
+```
+
+```{r}
+ultim=c(2018,12)
+pdq=c(8,1,0)
+PDQ=c(0,1,1)
+
+serie2=window(serie,end=ultim)
+lnserie2=log(serie2)
+serie1=window(serie,end=ultim+c(1,0))
+lnserie1=log(serie1)
+
+(modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12)))
+(modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12)))
+```
+
+```{r}
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+
+ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=ultim[1]+c(-2,+2),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+2),lty=3,col=4)
+```
+
+```{r}
+obs=window(serie,start=ultim+c(0,1))
+pr=window(pr,start=ultim+c(0,1))
+ts(data.frame(LowLim=tl[-1],Predic=pr,UpperLim=tu[-1],Observ=obs,Error=obs-pr,PercentError=(obs-pr)/obs),start=ultim+c(0,1),freq=12)
+mod.RMSE2=sqrt(sum((obs-pr)^2)/12)
+mod.MAE2=sum(abs(obs-pr))/12
+mod.RMSPE2=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE2=sum(abs(obs-pr)/obs)/12
+
+data.frame("RMSE"=mod.RMSE2,"MAE"=mod.MAE2,"RMSPE"=mod.RMSPE2,"MAPE"=mod.MAPE2)
+
+mCI2=mean(tu-tl)
+
+cat("\nMean Length CI: ",mCI1)
+```
+
+```{r}
+pred=predict(modA,n.ahead=12)
+pr<-ts(c(tail(lnserie1,1),pred$pred),start=ultim+c(1,0),freq=12)
+se<-ts(c(0,pred$se),start=ultim+c(1,0),freq=12)
+
+tl1<-ts(exp(pr-1.96*se),start=ultim+c(1,0),freq=12)
+tu1<-ts(exp(pr+1.96*se),start=ultim+c(1,0),freq=12)
+pr1<-ts(exp(pr),start=ultim+c(1,0),freq=12)
+
+ts.plot(serie,tl1,tu1,pr1,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(ultim[1]-2,ultim[1]+3),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+3),lty=3,col=4)
+```
+
+```{r}
+(previs2=window(cbind(tl1,pr1,tu1),start=ultim+c(1,0)))
+```
+
+```{r}
+
+resul=data.frame(
+  par=c(length(coef(mod1)),length(coef(mod2))),
+  Sigma2Z=c(mod1$sigma2,mod2$sigma2),
+  AIC=c(AIC(mod1),AIC(mod2)),
+  BIC=c(BIC(mod1),BIC(mod2)),
+   RMSE=c(mod.RMSE1,mod.RMSE2),
+  MAE=c(mod.MAE1,mod.MAE2),
+  RMSPE=c(mod.RMSPE1,mod.RMSPE2),
+  MAPE=c(mod.MAPE1,mod.MAPE2),
+  meanLength=c(mCI1,mCI2)
+  )
+
+row.names(resul)=c("ARIMA(1,1,1)(0,1,1)12","ARIMA(8,1,0)(0,1,1)12")
+
+
+
+resul
+
+
+```
+

@@ -1,0 +1,79 @@
+---
+title: "Session 2 Seasonal Models Identification"
+author: "Filip Chmielowski"
+date: "2024-12-03"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# GDPUSA data
+
+1) X_t Transformation
+W_t = (1 - B)^d * log(X_t) = (1 - B)^1 * log(X_t) = (1 - B) * log(X_t)
+d = 1
+
+2) Identification
+ACF / PACF: W_t
+AR(p) = AR(1)   =>   log(X_t) ~ ARIMA(p, d, q) = ARIMA(1, 1, 0)
+MA(q) = MA(2)   =>   log(X_t) ~ ARIMA(p, d, q) = ARIMA(0, 1, 2)
+
+```{r}
+serie=ts((read.table("gdpusa.dat")),start=1947,freq=4)
+plot(serie,main="GDP USA")
+abline(v=1947:2020,col=4,lty=3)
+
+d1lnserie = diff(log(serie))
+plot(d1lnserie)
+
+par(mfrow = c(1, 2))
+acf(d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+pacf(d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+par(mfrow = c(1, 1))
+
+m <- arima(d1lnserie, order = c(0, 1, 1)); m
+```
+
+# PreuIndEner data
+
+1) Identification / X_t Transformation
+W_t = (1 - B)^d * log(X_t) = (1 - B)^1 * log(X_t) = (1 - B) * log(X_t)
+d = 1
+
+2) Identification
+ACF / PACF: W_t
+AR(p) = AR(1)   =>   log(X_t) ~ ARIMA(p, d, q) = ARIMA(1, 1, 0)
+MA(q) = MA(1)   =>   log(X_t) ~ ARIMA(p, d, q) = ARIMA(0, 1, 1)
+
+```{r}
+serie=ts(read.table("preuIndEner.dat"),start=2000,freq=12)
+plot(serie)
+abline(v=1995:2020,col=4,lty=3)
+
+d1lnserie = diff(log(serie))
+plot(d1lnserie)
+
+par(mfrow = c(1, 2))
+acf(d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+pacf(d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+par(mfrow = c(1, 1))
+
+m <- arima(serie, order = c(1, 1, 0)); m
+m <- arima(serie, order = c(0, 1, 1)); m
+```
+
+# Pibsp data
+
+```{r}
+serie=ts((read.table("pibsp.dat")),start=1995,freq=4)
+plot(serie)
+abline(v=1995:2020,col=4,lty=3)
+
+d1lnserie = diff(log(serie))
+plot(d1lnserie)
+
+par(mfrow = c(1, 2))
+acf(d1d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+pacf(d1d1lnserie, ylim = c(-1, 1), lag.max = 60, lwd = 2)
+par(mfrow = c(1, 1))
+```

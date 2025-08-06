@@ -1,0 +1,363 @@
+---
+title: "Session 1: Transformation into Stationarity"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### GDPUSA: gross domestic product of the United States. Quarter I-1990 - Quarter IV-2019
+
+Gross domestic product of the United States; official web http://www.bea.gov/national/index.htm. Quarter I-1990 - Quarter IV-2019; 30 years. The series is seasonally adjusted.
+
+### I. Exploratory data analysis and transformation into stationarity
+
+#### Ia. Exploratory data analysis
+
+Import the data
+
+```{r}
+(serie=ts((read.table("gdpUSA.dat",header=F)),start=1947,freq=4))
+```
+
+Plot the time series GDPUSAvar
+
+```{r}
+plot(serie)
+abline(v=1947:2020,col=4,lty=3)
+abline(h=0)
+```
+
+#### Remarks…
+
+- Mention/describe here all known events in the period of study that might have influenced the AirBcn time series: Gulf war, Twin towers fall, financial crisis,…
+
+- Provide your general statistical impressions. For instance, does it seems to be:
+
+  - a seasonal component?
+
+  - a global trend? A non-constant superposed to a non-constant mean behavior.
+
+  - a non constant variance? Let’s check it all…
+
+#### Ib. Tranforming series into a stationary one:
+
+Is Variance constant?
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+Boxplots with only 4 observations? Better group observations of 2-3 years (8-12 quarters)?
+
+```{r}
+groupedserie <- matrix(serie[1:(24*12)],ncol=24) #12 quarters=3yrs together=ncol=12
+boxplot(groupedserie)
+```
+```{r}
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+Thus, … the varianza is not considered constant! So, we change the scale by applying logarithms
+
+```{r}
+lnserie=log(serie)
+plot(lnserie)
+abline(v=1947:2020,col=4,lty=3)
+abline(h=0)
+```
+Let's check the same plots for the transformed series
+
+```{r}
+groupedlnserie <- matrix(lnserie[1:(24*12)],ncol=24) #12 quarters=3yrs together=ncol=12
+boxplot(groupedlnserie)
+```
+
+```{r}
+m<-apply(groupedlnserie,2,mean)
+v<-apply(groupedlnserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+#### Is seasonality present?
+
+Nop, GDPUSA series has been previously seasonally adjusted and it represents already percentage variation
+
+#### Is the mean constant?
+
+There is a clear almost-linear trend. We have to apply one regular difference trying to make the mean constant:
+
+```{r}
+d1lnserie=diff(lnserie)
+plot(d1lnserie)
+abline(h=0)
+abline(h=mean(d1lnserie),col=2)
+```
+
+```{r}
+mean(lnserie) 
+```
+
+Mean seemingly constant, but different from zero!!!
+
+#### Check for over-differentiation: Take an extra differentiation and compare the variances.
+
+```{r}
+d1d1lnserie=diff(d1lnserie)
+plot(d1d1lnserie)
+abline(h=0)
+abline(h=mean(d1d1lnserie),col=2)
+```
+
+```{r}
+var(lnserie)
+var(d1lnserie)
+var(d1d1lnserie)
+```
+
+#### Is an extra differentiation needed?
+
+NOP! Observe that with extra regular difference the mean becomes zero, but the variance increases…
+
+#### Is the current series already stationary? Plot the ACF and decide!!
+
+```{r}
+par(mar = c(5, 4, 4, 2))
+acf(d1lnserie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
+
+```
+
+
+Notice that the ACF decays fast towards zero and thus the dependence structure depends only on the lag. Thus, the (1-B)log(GDPUSA) time series is already stationary!
+
+In this case, the given series (1-B)log(GDPUSA) shows no seasonality, has constant mean and variance. Additionally, its covariance structure does not depends on the time-origin.
+
+#### Final transformation for the GDPUSA series: $W_t=(1-B)\log X_t$
+
+### GDPUSAvar: gross domestic product variation of the United States. Quarter I-1990 - Quarter IV-2019
+
+Percent change over the previous period (quarter) of the gross domestic product of the United States; official web http://www.bea.gov/national/index.htm. Quarter I-1990 - Quarter IV-2019; 30 years. The series is seasonally adjusted.
+
+### I. Exploratory data analysis and transformation into stationarity
+
+#### Ia. Exploratory data analysis
+
+Import the data
+
+```{r}
+(serie=ts((read.table("gdpUSAvar.dat",header=F)),start=1990,freq=4))
+```
+
+Plot the time series GDPUSAvar
+
+```{r}
+plot(serie)
+abline(v=1990:2020,col=4,lty=3)
+abline(h=0)
+```
+
+#### Remarks…
+
+- Mention/describe here all known events in the period of study that might have influenced the GDPUSAvar time series: Gulf war, Twin towers fall, financial crisis,…
+
+- Provide your general statistical impressions. For instance, does it seems to be:
+
+  - a seasonal component?
+
+  - a global trend? A non-constant superposed to a non-constant mean behavior.
+
+  - a non constant variance? Let’s check it all…
+
+#### Ib. Tranforming series into a stationary one:
+
+Is Variance constant?
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+Boxplots with only 4 observations? Better group observations of 2-3 years (8-12 quarters)?
+
+```{r}
+groupedserie <- matrix(serie, ncol=12) #12 quarters=3yrs together=ncol=12
+boxplot(groupedserie)
+```
+
+Thus, … the varianza is considered constant!
+
+#### Is seasonality present?
+
+Nop, GDPUSAvar series has been previously seasonally adjusted and it represents already percentage variation
+
+#### Is the mean constant?
+
+Plot again the whole time series together with its mean value
+
+```{r}
+plot(serie)
+abline(h=0)
+abline(h=mean(serie),col=2)
+```
+```{r}
+mean(serie) 
+```
+
+Mean seemingly constant, but different from zero!!!
+
+#### Check for over-differentiation: Take an extra differentiation and compare the variances.
+
+```{r}
+d1serie=diff(serie)
+plot(d1serie)
+abline(h=0)
+abline(h=mean(d1serie),col=2)
+```
+
+```{r}
+var(serie)
+var(d1serie)
+```
+
+#### Is an extra differentiation needed?
+
+NOP! Observe that with extra regular difference the mean becomes zero, but the variance increases…
+
+#### Is the current series already stationary? Plot the ACF and decide!!
+
+```{r}
+par(mar = c(5, 4, 4, 2))
+acf(serie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
+
+```
+
+
+Notice that the ACF decays fast towards zero and thus the dependence structure depends only on the lag. Thus, the GDPUSAvar time series is already stationary!
+
+In this case, the given series GDPUSAvar shows no seasonality, has constant mean and variance. Additionally, its covariance structure does not depends on the time-origin.
+
+#### Final transformation for the GDPUSAvar series: $W_t= X_t$
+
+### AIRBCN: monthly number of passengers of international flights in El Prat Airport (BCN)
+
+### I. Exploratory data analysis and transformation into stationarity
+
+#### Ia. Exploratory data analysis
+
+Import the data (and express in "thousands of passengers")
+
+```{r}
+(serie=ts((read.table("airbcn.dat",header=F))/1000,start=1990,freq=12))
+```
+
+Plot the time series
+
+```{r}
+plot(serie)
+abline(v=1990:2020,col=4,lty=3)
+abline(h=0)
+```
+
+#### Ib. Tranforming series into a stationary one:
+
+Is Variance constant?
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+
+```{r}
+m<-apply(matrix(serie,nrow=12),2,mean)
+v<-apply(matrix(serie,nrow=12),2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+Thus, … the varianza is not considered constant! So, we change the scale by applying logarithms
+
+```{r}
+lnserie=log(serie)
+plot(lnserie)
+abline(v=1990:2020,col=4,lty=3)
+abline(h=0)
+```
+Let's check the same plots for the transformed series
+
+```{r}
+matrixlnserie <- matrix(lnserie,nrow=12)
+boxplot(matrixlnserie)
+```
+
+```{r}
+m<-apply(matrixlnserie,2,mean)
+v<-apply(matrixlnserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+#### Is seasonality present?
+
+```{r}
+monthplot(lnserie)
+```
+
+```{r}
+ts.plot(matrix(lnserie,nrow=12),col=1:8)
+```
+
+```{r}
+d12lnserie<-diff(lnserie,lag=12)
+plot(d12lnserie)
+abline(h=0)
+abline(h=mean(d12lnserie),col=2)
+```
+```{r}
+monthplot(d12lnserie)
+```
+```{r}
+ts.plot(matrix(d12lnserie,nrow=12),col=1:8)
+```
+
+#### Is the mean constant?
+
+We have to apply one regular difference trying to make the mean constant:
+
+```{r}
+d1d12lnserie=diff(d12lnserie)
+plot(d1d12lnserie)
+abline(h=0)
+abline(h=mean(d1d12lnserie),col=2)
+```
+
+Mean seemingly constant equal to zero!!!
+
+#### Check for over-differentiation: Take an extra differentiation and compare the variances.
+
+```{r}
+d1d1d12lnserie=diff(d1d12lnserie)
+plot(d1d1d12lnserie)
+abline(h=0)
+abline(h=mean(d1d1d12lnserie),col=2)
+```
+
+```{r}
+var(lnserie)
+var(d12lnserie)
+var(d1d12lnserie)
+var(d1d1d12lnserie)
+```
+
+#### Is the current series already stationary? Plot the ACF and decide!!
+
+```{r}
+par(mar = c(5, 4, 4, 2))
+acf(d1d12lnserie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
+
+```
+
+#### Final transformation for the AIRBCN series: $W_t=(1-B)(1-B^{12})\log X_t$
+
+

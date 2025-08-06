@@ -1,0 +1,60 @@
+
+## IDENTIFICATION OF STATIONARY MODELS ARMA(p,q)
+
+Data comes from BEA (Bureau of Economic Analysis, USA). It refers to National data on Investment (Table 5.3.1. Percent Change From Preceding Period in Real Private Fixed Investment by Type) URL: https://www.bea.gov/iTable/iTable.cfm?reqid=19&step=2#reqid=19&step=3&isuri=1&1921=survey&1903=141
+
+```{r}
+serT=ts(read.csv2("investment.csv"),start=1985,freq=4)
+
+```
+
+
+
+
+```{r}
+ser=window(serT,start=1985)
+
+sol=c("AR(2)",
+      "AR(2)",
+      "AR(1),MA(3),ARMA(1,1)",
+      "AR(4),MA(3)",
+      "AR(1),MA(1)",
+      "WN",
+      "AR(1),MA(1)",
+      "WN",
+      "AR(2),MA(3),ARMA(1,1)",
+      "AR(2),MA(3),ARMA(1,1)",
+      "AR(3),ARMA(1,1)",
+      "AR(1),MA(1)",
+      "AR(2),MA(3),ARMA(1,1)",
+      "AR(2),MA(2)",
+      "AR(1),MA(1)",
+      "AR(4)",
+      "AR(2)",
+      "MA(3),AR(3)",
+      "AR(1),MA(1)",
+      "AR(2),ARMA(1,1)",
+      "AR(2),ARMA(1,1)",
+      "AR(5),ARMA(1,1)",
+      "AR(5),ARMA(1,1)",
+      "AR(2)",
+      "AR(3)",
+      "AR(3),ARMA(1,1)",
+      "AR(2)",
+      "AR(2)")
+
+
+for (j in 0:13){
+for (i in j*2+1:2){
+  seri=ser[,i]
+
+par(mfrow=c(1,1))
+plot(seri,main=colnames(ser)[i])
+  abline(h=0)
+par(mfrow=c(1,2))
+    acf(seri,ylim=c(-1,1),lag.max=48,lwd=2,main=colnames(ser)[i],na.action=na.pass)
+  pacf(seri,ylim=c(-1,1),lag.max=48,lwd=2,main=colnames(ser)[i],na.action=na.pass)
+  cat("\nSerie: ",colnames(ser)[i],"Posibles modelos: ",sol[i],"\n")
+}
+}
+```

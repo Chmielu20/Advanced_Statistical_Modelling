@@ -1,0 +1,234 @@
+---
+output:
+  html_document: default
+  word_document: default
+---
+```{r}
+library(tseries)
+library(fBasics)
+library(quantmod)
+
+
+```
+
+```{r}
+####### Indice bursatil IBEX35
+val="^IBEX"
+######## Telefonica en el mercado continuo desde 1/1/2000 #######
+val="TEF.MC"
+######## BBVA en el mercado continuo desde 1/1/2000 #######
+val="BBVA.MC"
+######## Dow Jones desde 1/1/2000 #######
+val="^DJI"
+
+```
+
+
+```{r}
+options("getSymbols.warning4.0"=FALSE)
+getSymbols("^DJI")
+aa=DJI
+
+head(aa)
+tail(aa)
+plot(aa[,4])
+chartSeries(aa)
+
+
+```
+
+
+```{r}
+serie=ts(data.frame(aa[,4]))
+ret=diff(log(serie))
+basicStats(ret)
+par(mfrow=c(2,1),mar=c(2,2,1,1))
+ts.plot(serie)
+ts.plot(ret)
+par(mfrow=c(1,1))
+```
+```{r}
+par(mfrow=c(1,2))
+acf(ret,lag.max=80)
+pacf(ret,lag.max=80)
+par(mfrow=c(1,1))
+```
+
+
+```{r}
+(mod=ar(ret,aic=T,order.max=40))
+p=mod$order
+```
+
+```{r}
+(mod1=arima(ret,order=c(p,0,0)))
+```
+```{r}
+#################Validation#################################
+validation=function(model,dades){
+  resid=model$residuals
+  par(mfrow=c(2,2),mar=c(3,3,3,3))
+  #Residuals plot
+  plot(resid,main="Residuals")
+  abline(h=0)
+  abline(h=c(-3*sd(resid),3*sd(resid)),lty=3,col=4)
+  #Square Root of absolute values of residuals (Homocedasticity)
+  scatter.smooth(sqrt(abs(resid)),main="Square Root of Absolute residuals",
+                 lpars=list(col=2))
+  
+  #Normal plot of residuals
+  qqnorm(resid)
+  qqline(resid,col=2,lwd=2)
+  
+  ##Histogram of residuals with normal curve
+  hist(resid,breaks=20,freq=F)
+  curve(dnorm(x,mean=mean(resid),sd=sd(resid)),col=2,add=T)
+  
+  
+  #ACF & PACF of residuals
+  par(mfrow=c(1,2))
+  acf(resid,lag.max=60,lwd=1)
+  pacf(resid,lag.max=60,lwd=1)
+  par(mfrow=c(1,1))
+  
+  #ACF & PACF of square residuals 
+  par(mfrow=c(1,2))
+  acf(resid^2,lag.max=60,lwd=1)
+  pacf(resid^2,lag.max=60,lwd=1)
+  par(mfrow=c(1,1))
+  
+  #Ljung-Box p-values
+  par(mar=c(2,2,1,1))
+  tsdiag(model,gof.lag=60)
+  cat("\n--------------------------------------------------------------------\n")
+  print(model)
+  
+  #Stationary and Invertible
+  cat("\nModul of AR Characteristic polynomial Roots: ", 
+      Mod(polyroot(c(1,-model$model$phi))),"\n")
+  cat("\nModul of MA Characteristic polynomial Roots: ",
+      Mod(polyroot(c(1,model$model$theta))),"\n")
+  
+  #Model expressed as an MA infinity (psi-weights)
+  psis=ARMAtoMA(ar=model$model$phi,ma=model$model$theta,lag.max=36)
+  names(psis)=paste("psi",1:36)
+  cat("\nPsi-weights (MA(inf))\n")
+  cat("\n--------------------\n")
+  print(psis[1:20])
+  
+  #Model expressed as an AR infinity (pi-weights)
+  pis=-ARMAtoMA(ar=-model$model$theta,ma=-model$model$phi,lag.max=36)
+  names(pis)=paste("pi",1:36)
+  cat("\nPi-weights (AR(inf))\n")
+  cat("\n--------------------\n")
+  print(pis[1:20])
+  
+  ##Shapiro-Wilks Normality test
+  print(shapiro.test(resid(model)))
+  
+  #Sample ACF vs. Teoric ACF
+  par(mfrow=c(2,2),mar=c(3,3,3,3))
+  acf(dades, lag.max=36,main="Sample ACF")
+  
+  plot(ARMAacf(model$model$phi,model$model$theta,lag.max=36), 
+       type="h",xlab="Lag",  ylab="", main="ACF Teoric")
+  abline(h=0)
+  
+  #Sample PACF vs. Teoric PACF
+  pacf(dades,lag.max=36,main="Sample PACF")
+  
+  plot(ARMAacf(model$model$phi,model$model$theta,lag.max=36, pacf=T),
+       type="h", xlab="Lag", ylab="", main="PACF Teoric")
+  abline(h=0)
+  par(mfrow=c(1,1))
+}
+################# Fi Validaci? #################################
+```
+
+
+```{r}
+dades=ret
+model=mod1
+validation(model,dades)
+```
+
+```{r}
+source("ModelosGarch.r")
+m1<-arimaRet(serie)
+```
+
+```{r}
+m2<-garchRet(serie)
+```
+
+```{r}
+summary(m2$garch)
+```
+```{r}
+
+model=m1$ar
+resid.arima=resid(model)/sqrt(model$sigma)
+
+resid.garch=ts(m2$garch$resid[-1])
+cbind(basicStats(resid.arima),basicStats(resid.garch))
+```
+
+```{r}
+
+par(mfrow=c(2,1))
+#Plot dels residus
+plot(resid.arima,main="AR")
+abline(h=0)
+abline(h=c(-3*sd(resid.arima),3*sd(resid.arima)),lty=3,col=4)
+#Plot dels residus
+plot(resid.garch,main="AR+GARCH")
+abline(h=0)
+abline(h=c(-3*sd(resid.garch),3*sd(resid.garch)),lty=3,col=4)
+```
+```{r}
+par(mfrow=c(1,2))
+qqnorm(resid.arima,main="AR")
+qqline(resid.arima,col=2,lwd=2)
+qqnorm(resid.garch,main="AR+GARCH")
+qqline(resid.garch,col=2,lwd=2)
+```
+```{r}
+#ACF i PACF dels residus
+par(mfrow=c(2,2))
+acf(resid.arima,main="AR StResid",lag.max=40,lwd=2)
+pacf(resid.arima,main="AR StResid",lag.max=40,lwd=2)
+
+acf(resid.garch,main="AR+GARCH StResid",lag.max=40,lwd=2)
+pacf(resid.garch,main="AR+GARCH StResid",lag.max=40,lwd=2)
+```
+
+```{r}
+#ACF i PACF dels residus
+par(mfrow=c(2,2))
+acf(resid.arima^2,main="AR StResid^2",lag.max=40,lwd=2)
+pacf(resid.arima^2,main="AR StResid^2",lag.max=40,lwd=2)
+
+acf(resid.garch^2,main="AR+GARCH StResid^2",lag.max=40,lwd=2)
+pacf(resid.garch^2,main="AR+GARCH StResid^2",lag.max=40,lwd=2)
+
+```
+
+```{r}
+ts.plot(resid(model)[-1])
+lines(3*fitted(m2$garch)[-1,1],lty=3,col=4)
+lines(-3*fitted(m2$garch)[-1,1],lty=3,col=4)
+abline(h=c(-3,3)*sqrt(m1$ar$sigma2),lty=3,col=2)
+legend("topright",col=c(2,4),lty=3,legend=c("Marginal","Conditional"))
+
+```
+
+```{r}
+par(mfrow=c(2,1),mar=c(3,3,1,1))
+ts.plot(resid(model)[-1])
+ts.plot(fitted(m2$garch)[-1,1]/sqrt(m1$ar$sigma2),main="Volatility",lty=3)
+abline(h=1,lty=3,col=2)
+
+
+
+```
+

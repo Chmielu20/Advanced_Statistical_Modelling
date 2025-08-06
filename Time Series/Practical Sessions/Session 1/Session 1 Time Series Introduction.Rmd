@@ -1,0 +1,222 @@
+---
+title: "Session 1 Time Series Introduction"
+author: "Filip Chmielowski"
+date: "2024-11-12"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+# Clear the workspace
+
+```{r}
+rm(list = ls())
+```
+
+
+Session: 12.11.2024.
+
+
+# AirPassengers data
+
+```{r}
+AirPassengers
+
+plot(AirPassengers)
+
+mm <- apply(matrix(AirPassengers, nr = 12), 2, mean)
+s2 <- apply(matrix(AirPassengers, nr = 12), 2, var)
+
+plot(s2 ~ mm)
+
+boxplot(AirPassengers ~ floor(time(AirPassengers)))
+
+# The scale change to log(X) is necessary because the variance is different
+```
+
+# co2 data
+
+```{r}
+co2
+
+plot(co2)
+
+mm <- apply(matrix(co2, nr = 12), 2, mean)
+s2 <- apply(matrix(co2, nr = 12), 2, var)
+
+plot(s2 ~ mm)
+
+boxplot(co2 ~ floor(time(co2)))
+
+# The scale change to log(X) is not necessary
+```
+
+# AirPassengers data - scale change
+
+```{r}
+lnAirPassengers <- log(AirPassengers)
+
+lnAirPassengers
+
+plot(lnAirPassengers)
+
+mm <- apply(matrix(lnAirPassengers, nr = 12), 2, mean)
+s2 <- apply(matrix(lnAirPassengers, nr = 12), 2, var)
+
+plot(s2 ~ mm)
+
+boxplot(lnAirPassengers ~ floor(time(lnAirPassengers)))
+
+# Now the scale, after changing it to log(X), is okay
+```
+
+
+Session: 19.11.2024.
+
+
+# GDP USA data
+
+## Gross Domestic Product in USA (Quarterly). Seasonally adjusted
+
+### W_t = (1 - Beta) * log(X_t)
+
+```{r}
+serieUSA = ts((read.table("gdpusa.dat")), start = 1947, freq = 4)
+plot(serieUSA, main = "GDP USA")
+abline(v = 1947:2020, col = 4, lty = 3)
+
+matrix(serieUSA[1:(24*12)], nr = 12)
+#length(serie/12)
+m <- apply(matrix(serieUSA[1:(24*12)], nr = 12), 2, mean); m
+v <- apply(matrix(serieUSA[1:(24*12)], nr = 12), 2, var); v
+plot(v ~ m)
+# In this case it is not possible to consider that the variance is constant
+# Doing a logarithm transformation is necessary then
+
+# Grouping 3 years in one group
+group <- c(rep(1:24, rep(12, 24)), rep(25, 4)); group
+boxplot(serieUSA ~ group)
+
+# Grouping 4 years in one group
+group <- c(rep(1:18, rep(16, 18)), rep(17, 4)); group
+boxplot(serieUSA ~ group)
+
+lnserieUSA <- log(serieUSA)
+plot(lnserieUSA)
+
+d1lnserieUSA <- diff(lnserieUSA, lag = 1)
+plot(d1lnserieUSA)
+abline(h = 0)
+
+d1d1lnserieUSA <- diff(d1lnserieUSA)
+plot(d1d1lnserieUSA)
+
+var(lnserieUSA) # Base variance
+var(d1lnserieUSA) # Lower than the previous variance - valid
+var(d1d1lnserieUSA) # Higher than the previous variance - not valid
+```
+
+# GDP USA var data
+
+## Percent Change From Preceding Period in Prices for Gross Domestic Product USA. Seasonally adjusted
+
+### W_t = X_t
+
+```{r}
+serieUSAvar = ts((read.table("gdpUSAvar.dat", header = F)), start = 1990, freq = 4)
+plot(serieUSAvar)
+abline(v = 1990:2020, col = 4, lty = 3)
+abline(h = 0)
+
+m <- apply(matrix(serieUSAvar[1:(24*12)], nr = 12), 2, mean); m
+v <- apply(matrix(serieUSAvar[1:(24*12)], nr = 12), 2, var); v
+plot(v ~ m)
+# In this case it is possible to consider that the variance is constant
+
+group <- c(rep(1:10, rep(12, 10))); group
+boxplot(serieUSAvar ~ group)
+
+d1serieUSAvar <- diff(serieUSAvar)
+plot(d1serieUSAvar)
+abline(h = 0)
+
+var(serieUSAvar) # Base variance
+var(d1serieUSAvar) # Higher than the previous variance - not valid
+```
+
+# AirBCN data
+
+## Monthly passengers on international flights in El Prat (BCN) Airport
+
+### W_t = (1 - Beta) * (1 - Beta^{12}) * log(X_t)
+
+```{r}
+serieBCN = ts(read.table("airbcn.dat")[, 1] / 1000, start = 1990, freq = 12)
+plot(serieBCN, main = "Passengers on international flights (BCN-Prat)",
+ylim = c(0, 4100), ylab = "Thousands of passengers")
+abline(v = 1990:2020, col = 4, lty = 3)
+
+m <- apply(matrix(serieBCN, nr = 12), 2, mean)
+v <- apply(matrix(serieBCN, nr = 12), 2, var)
+plot(v ~ m)
+
+boxplot(serieBCN ~ floor(time(serieBCN)))
+
+lnserieBCN <- log(serieBCN)
+plot(lnserieBCN)
+
+m <- apply(matrix(lnserieBCN, nr = 12), 2, mean)
+v <- apply(matrix(lnserieBCN, nr = 12), 2, var)
+plot(v ~ m)
+
+boxplot(lnserieBCN ~ floor(time(lnserieBCN)))
+
+monthplot(lnserieBCN)
+ts.plot(matrix(lnserieBCN, nr = 12))
+
+d12lnserieBCN = diff(lnserieBCN, 12)
+plot(d12lnserieBCN)
+
+monthplot(d12lnserieBCN)
+ts.plot(matrix(d12lnserieBCN, nr = 12))
+
+d1d12lnserieBCN = diff(d12lnserieBCN)
+plot(d1d12lnserieBCN)
+
+var(lnserieBCN) # Base variance
+var(d12lnserieBCN) # Lower than the previous variance - valid
+var(d1d12lnserieBCN) # Lower than the previous variance - valid
+
+d1d1d12lnserieBCN = diff(d1d12lnserieBCN)
+plot(d1d1d12lnserieBCN)
+
+var(d1d1d12lnserieBCN) # Higher than the previous variance - not valid
+```
+
+# Euro Dol data
+
+## Exchange rate USD/EUR
+
+### W_t = (1 - Beta) * X_t
+
+```{r}
+serie = ts((read.table("eurodol.dat")), start = 1995, freq = 12)
+plot(serie)
+abline(v = 1995:2020, col = 4, lty = 3)
+```
+
+# Euribor data
+
+## Type of interest. EMU. Money market. Euribor at 12 months
+
+### W_t = (1 - Beta) * X_t
+###       (1 - Beta) * log(X_t + 0.1)
+
+```{r}
+serie = ts(read.table("euribor.dat"), start = 1999, freq = 12)
+plot(serie)
+abline(h = 0)
+abline(v = 1995:2020, col = 4, lty = 3)
+```
